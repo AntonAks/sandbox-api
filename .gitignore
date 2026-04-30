@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code (personal, not committed)
+.claude/settings.local.json
+
+# Project artifacts (added later if needed)
+# uv.lock           — DO commit (per spec: lock through uv.lock)
+# *.tfstate         — Terraform state, never commit
+# *.tfstate.backup
+# .terraform/
+# terraform.tfvars
