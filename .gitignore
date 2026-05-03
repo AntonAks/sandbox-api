@@ -28,9 +28,13 @@ Thumbs.db
 # Claude Code (personal, not committed)
 .claude/settings.local.json
 
-# Project artifacts (added later if needed)
-# uv.lock           — DO commit (per spec: lock through uv.lock)
-# *.tfstate         — Terraform state, never commit
-# *.tfstate.backup
-# .terraform/
-# terraform.tfvars
+# App venv (uv creates one per package)
+app/.venv/
+
+# Terraform
+infra/terraform.tfvars
+infra/.terraform/
+infra/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
