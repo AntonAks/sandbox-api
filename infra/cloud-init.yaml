@@ -1,0 +1,36 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+packages:
+  - docker.io
+  - docker-compose-v2
+
+write_files:
+  - path: /opt/workshop/docker-compose.prod.yml
+    permissions: '0644'
+    content: |
+      ${indent(6, compose_prod_content)}
+
+  - path: /opt/workshop/nginx.conf
+    permissions: '0644'
+    content: |
+      ${indent(6, nginx_content)}
+
+  - path: /opt/workshop/.env
+    permissions: '0600'
+    content: |
+      ENV=${app_env}
+      LOG_LEVEL=INFO
+      UVICORN_WORKERS=2
+      GITHUB_REPOSITORY=${github_repository}
+      POSTGRES_USER=postgres
+      POSTGRES_PASSWORD=${postgres_password}
+      POSTGRES_DB=sandbox_api
+      DATABASE_URL=postgresql+asyncpg://postgres:${postgres_password}@db:5432/sandbox_api
+
+runcmd:
+  - systemctl enable --now docker
+  - mkdir -p /opt/workshop
+  - echo "${ghcr_token}" | docker login ghcr.io -u "${github_owner}" --password-stdin
+  - cd /opt/workshop && docker compose -f docker-compose.prod.yml pull
+  - cd /opt/workshop && docker compose -f docker-compose.prod.yml up -d

@@ -1,0 +1,7 @@
+hcloud_token        = "your-hetzner-cloud-api-token"
+admin_ip            = "1.2.3.4/32"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+github_repository   = "your-github-username/sandbox-api"
+ghcr_token          = "ghp_your-pat-with-read-packages-scope"
+postgres_password   = "change-me-strong-password"
+app_env             = "prod"
