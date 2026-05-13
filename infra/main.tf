@@ -68,7 +68,7 @@ resource "aws_security_group" "app" {
   }
 
   ingress {
-    description = "SSH (key auth only — open so GitHub Actions deploy job can SSH in)"
+    description = "SSH (key auth only, open so GitHub Actions deploy job can SSH in)"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
