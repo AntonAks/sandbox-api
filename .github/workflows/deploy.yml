@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   ci:
@@ -91,12 +92,43 @@ jobs:
     name: SSH deploy
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      server_ip: ${{ steps.ip.outputs.value }}
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            eu-central-1
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Resolve state bucket name
+        id: state
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "bucket=sandbox-api-tfstate-${ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: tofu init
+        working-directory: infra
+        run: tofu init -input=false -backend-config="bucket=${{ steps.state.outputs.bucket }}"
+
+      - name: Read server IP from state
+        id: ip
+        working-directory: infra
+        run: echo "value=$(tofu output -raw server_ip)" >> "$GITHUB_OUTPUT"
+
       - name: Pull and restart on server
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: ${{ steps.ip.outputs.value }}
+          username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/workshop
@@ -109,9 +141,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for /health/ready
+        env:
+          HOST: ${{ needs.deploy.outputs.server_ip }}
         run: |
           for i in $(seq 1 12); do
-            if curl -fsS "http://${{ secrets.SSH_HOST }}/health/ready" | grep -q '"db":"ok"'; then
+            if curl -fsS "http://$HOST/health/ready" | grep -q '"db":"ok"'; then
               echo "ready after $i attempt(s)"
               exit 0
             fi

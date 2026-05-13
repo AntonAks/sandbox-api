@@ -1,15 +1,45 @@
 terraform {
   required_version = ">= 1.6"
   required_providers {
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.50"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.70"
     }
   }
 }
 
-provider "hcloud" {
-  token = var.hcloud_token
+provider "aws" {
+  region = var.aws_region
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
 }
 
 locals {
@@ -19,36 +49,54 @@ locals {
   nginx_content           = file("${path.module}/../deploy/nginx.conf")
 }
 
-resource "hcloud_ssh_key" "admin" {
-  name       = "workshop-admin"
-  public_key = file(pathexpand(var.ssh_public_key_path))
+resource "aws_key_pair" "admin" {
+  key_name   = "workshop-admin"
+  public_key = var.ssh_public_key
 }
 
-resource "hcloud_firewall" "main" {
-  name = "workshop-firewall"
+resource "aws_security_group" "app" {
+  name        = "workshop-app"
+  description = "HTTP from world, SSH from admin"
+  vpc_id      = data.aws_vpc.default.id
 
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = ["0.0.0.0/0", "::/0"]
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "22"
-    source_ips = [var.admin_ip]
+  ingress {
+    description = "SSH from admin"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.admin_ip]
+  }
+
+  egress {
+    description = "All outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-resource "hcloud_server" "app" {
-  name         = "workshop-app"
-  image        = "ubuntu-24.04"
-  server_type  = "cpx21"
-  location     = "fsn1"
-  ssh_keys     = [hcloud_ssh_key.admin.id]
-  firewall_ids = [hcloud_firewall.main.id]
+resource "aws_instance" "app" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  key_name                    = aws_key_pair.admin.key_name
+  vpc_security_group_ids      = [aws_security_group.app.id]
+  subnet_id                   = tolist(data.aws_subnets.default.ids)[0]
+  associate_public_ip_address = true
+
+  root_block_device {
+    volume_size           = 20
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   user_data = templatefile("${path.module}/cloud-init.yaml", {
     github_repository    = local.github_repository_lower
@@ -59,4 +107,8 @@ resource "hcloud_server" "app" {
     compose_prod_content = local.compose_prod_content
     nginx_content        = local.nginx_content
   })
+
+  tags = {
+    Name = "workshop-app"
+  }
 }

@@ -1,7 +1,13 @@
-variable "hcloud_token" {
+variable "aws_region" {
   type        = string
-  sensitive   = true
-  description = "Hetzner Cloud API token."
+  default     = "eu-central-1"
+  description = "AWS region for all resources."
+}
+
+variable "instance_type" {
+  type        = string
+  default     = "t3.small"
+  description = "EC2 instance type."
 }
 
 variable "admin_ip" {
@@ -9,10 +15,9 @@ variable "admin_ip" {
   description = "Admin IP CIDR allowed for SSH (e.g. \"1.2.3.4/32\")."
 }
 
-variable "ssh_public_key_path" {
+variable "ssh_public_key" {
   type        = string
-  default     = "~/.ssh/id_ed25519.pub"
-  description = "Path to local SSH public key uploaded to Hetzner."
+  description = "OpenSSH public key contents (e.g. \"ssh-ed25519 AAAA... user@host\"). Uploaded to AWS as the EC2 key pair."
 }
 
 variable "github_repository" {

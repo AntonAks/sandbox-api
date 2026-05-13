@@ -43,10 +43,10 @@ deploy:
 
 # Server access
 ssh:
-    ssh root@$(cd infra && tofu output -raw server_ip)
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip)
 
 server-logs:
-    ssh root@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose logs -f app'
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose logs -f app'
 
 server-status:
-    ssh root@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose ps'
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose ps'

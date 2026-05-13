@@ -17,7 +17,7 @@ write_files:
       ${indent(6, nginx_content)}
 
   - path: /opt/workshop/.env
-    permissions: '0600'
+    permissions: '0640'
     content: |
       ENV=${app_env}
       LOG_LEVEL=INFO
@@ -30,7 +30,10 @@ write_files:
 
 runcmd:
   - systemctl enable --now docker
-  - mkdir -p /opt/workshop
+  - usermod -aG docker ubuntu
+  - chown -R ubuntu:ubuntu /opt/workshop
   - echo "${ghcr_token}" | docker login ghcr.io -u "${github_owner}" --password-stdin
+  - install -d -m 700 -o ubuntu -g ubuntu /home/ubuntu/.docker
+  - install -m 600 -o ubuntu -g ubuntu /root/.docker/config.json /home/ubuntu/.docker/config.json
   - cd /opt/workshop && docker compose -f docker-compose.prod.yml pull
   - cd /opt/workshop && docker compose -f docker-compose.prod.yml up -d
