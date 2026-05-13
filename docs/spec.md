@@ -4,7 +4,9 @@
 
 Я готую workshop для розробників, де демонструватиму діагностику і рішення performance проблем за допомогою Claude Code. Це baseline setup — фундамент, на який пізніше додаватиметься бізнес-логіка з закладеними проблемами (N+1, повільні queries, можливо race conditions).
 
-Стек фіксований: Python 3.12, FastAPI, PostgreSQL 16, Docker, GitHub Actions, Hetzner Cloud (deploy через SSH + ghcr.io). Без SSL — workshop ефемерний, instance видалю після.
+Стек фіксований: Python 3.12, FastAPI, PostgreSQL 16, Docker, GitHub Actions, AWS EC2 у `eu-central-1` (deploy через SSH + ghcr.io). Без SSL — workshop ефемерний, instance видалю після.
+
+> **Примітка:** інфра спочатку планувалась на Hetzner Cloud, але через тривалий outage Hetzner Accounts ми перейшли на AWS. Якщо колись повертаємось на Hetzner — це окремий PR, поки документація і код описують AWS.
 
 ## Структура repo
 
@@ -37,7 +39,8 @@ Monorepo:
 │   ├── Dockerfile
 │   └── .dockerignore
 ├── infra/
-│   ├── main.tf                   # Hetzner provider, 1 server, firewall
+│   ├── main.tf                   # AWS provider, EC2 + SG + key pair (default VPC)
+│   ├── backend.tf                # S3 backend (use_lockfile = true)
 │   ├── variables.tf
 │   ├── outputs.tf
 │   ├── cloud-init.yaml
@@ -49,7 +52,8 @@ Monorepo:
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                # lint + test + build на кожен PR
-│       └── deploy.yml            # build + push to ghcr.io + ssh deploy на main
+│       ├── deploy.yml            # build + push to ghcr.io + ssh deploy на main
+│       └── infra.yml             # workflow_dispatch: tofu plan/apply/destroy
 ├── .env.example
 ├── .gitignore
 ├── justfile                      # команди-shortcuts
@@ -158,57 +162,73 @@ Jobs:
    - cache через GHA cache backend
 3. **deploy**:
    - needs build-and-push
-   - SSH через `appleboy/ssh-action`
+   - читає `server_ip` з Terraform state в S3 (через `tofu init` + `tofu output -raw server_ip`) — без окремого `SSH_HOST` секрета
+   - SSH через `appleboy/ssh-action` як `ubuntu` (default user в AWS Ubuntu AMI)
    - команди: `cd /opt/workshop && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`
+   - експортує `server_ip` як job output
 4. **smoke-test**:
    - needs deploy
-   - curl `http://${{ secrets.SSH_HOST }}/health/ready` з retry (max 12 спроб по 5 секунд = 60s)
+   - curl `http://${{ needs.deploy.outputs.server_ip }}/health/ready` з retry (max 12 спроб по 5 секунд = 60s)
    - fail якщо не зелений
 
-Required secrets: `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`. `GITHUB_TOKEN` для ghcr вже є by default.
+Required secrets для deploy.yml: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (щоб прочитати tfstate), `SSH_PRIVATE_KEY`. `GITHUB_TOKEN` для ghcr вже є by default.
 
 ## Terraform
 
 ### `infra/main.tf`
 
-- Provider `hetznercloud/hcloud`
-- 1 server `cpx21` в `fsn1`, image `ubuntu-24.04`
-- Firewall: 
+- Provider `hashicorp/aws` (`~> 5.70`), регіон з `var.aws_region` (default `eu-central-1`)
+- Default VPC + перша default-for-az підмережа (без створення своєї VPC — спрощує і здешевлює)
+- `aws_key_pair` (вміст ключа з `var.ssh_public_key`, **не** path — CI не має локального ключа)
+- `aws_security_group`:
   - 80/tcp з `0.0.0.0/0`
-  - 22/tcp з `var.admin_ip` (мій IP)
-- SSH key з local file (path через variable)
+  - 22/tcp з `var.admin_ip`
+  - egress all
+- `aws_instance`, тип з `var.instance_type` (default `t3.small`), latest Canonical Ubuntu 24.04 LTS через `data "aws_ami"`, root volume 20GB gp3, public IPv4 auto-assign
 - cloud-init який:
   1. ставить docker + docker compose plugin
-  2. створює `/opt/workshop`
-  3. кладе туди `docker-compose.prod.yml` і `nginx.conf` (через `write_files`)
-  4. логінується в ghcr.io через deploy token (передається як user_data variable)
-  5. створює `.env` з production значеннями (Postgres credentials, etc)
-  6. робить перший `docker compose pull && docker compose up -d`
+  2. додає `ubuntu` в `docker` group
+  3. кладе `/opt/workshop/{docker-compose.prod.yml,nginx.conf,.env}` через `write_files`, chown'ить на `ubuntu`
+  4. логінується в ghcr.io як root і копіює `~/.docker/config.json` → `~ubuntu/.docker/config.json` (щоб майбутні SSH-deploy могли пулити приватні образи)
+  5. робить перший `docker compose pull && docker compose up -d`
+
+### `infra/backend.tf`
+
+- S3 backend, ключ `sandbox-api/terraform.tfstate`, регіон `eu-central-1`
+- `use_lockfile = true` (OpenTofu native S3-object lock, без DynamoDB)
+- Bucket резолвиться у workflow через `tofu init -backend-config="bucket=sandbox-api-tfstate-<aws_account_id>"`. Сам bucket створюється кроком у `infra.yml`, якщо не існує (versioning + AES256 + public-access-block).
 
 ### `infra/variables.tf`
 
-- `hcloud_token` (sensitive)
-- `admin_ip` (для SSH firewall rule)
-- `ssh_public_key_path` (default `~/.ssh/id_ed25519.pub`)
+- `aws_region` (default `eu-central-1`)
+- `instance_type` (default `t3.small`)
+- `admin_ip` (для SG)
+- `ssh_public_key` (**вміст** OpenSSH public key, не path)
 - `github_repository` (для image path)
-- `ghcr_token` (sensitive, для pull з private registry якщо буде private)
+- `ghcr_token` (sensitive)
 - `postgres_password` (sensitive)
 - `app_env` (для `.env`)
 
 ### `infra/outputs.tf`
 
-- `server_ip` — IPv4 сервера
-- `ssh_command` — готова команда `ssh root@<ip>`
+- `server_ip` — public IPv4 EC2 інстансу
+- `ssh_command` — готова команда `ssh ubuntu@<ip>`
+
+### `.github/workflows/infra.yml`
+
+- Тригер: **тільки** `workflow_dispatch` з input `action` ∈ {`plan`, `apply`, `destroy`}
+- Кроки: checkout → `aws-actions/configure-aws-credentials` (access keys) → `opentofu/setup-opentofu` → ensure state-bucket (idempotent) → `tofu init` з динамічним bucket → `tofu fmt -check` + `validate` → відповідна команда
+- Після `apply` друкує `server_ip` і `ssh_command` в job summary
 
 ### `infra/README.md`
 
 Інструкції:
-1. Створити Hetzner API token
-2. `cp terraform.tfvars.example terraform.tfvars`, заповнити
-3. `tofu init && tofu apply`
-4. Дочекатися доки cloud-init завершиться (`ssh root@<ip> 'cloud-init status --wait'`)
-5. Перевірити `curl http://<ip>/health/ready`
-6. Як `tofu destroy`
+1. Створити IAM user з access keys (EC2 + S3 повноваження достатні для sandbox)
+2. Згенерувати SSH keypair, GitHub PAT з `read:packages`, postgres пароль
+3. Додати в GitHub repo secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `TF_VAR_ADMIN_IP`, `TF_VAR_SSH_PUBLIC_KEY`, `TF_VAR_GHCR_TOKEN`, `TF_VAR_POSTGRES_PASSWORD`, `SSH_PRIVATE_KEY`
+4. **Actions → Infra → Run workflow → `apply`** — на завершенні job summary друкує `server_ip`
+5. Перевірити `curl http://<server_ip>/health/ready`
+6. Тіардаун — **Actions → Infra → Run workflow → `destroy`**
 
 ## Justfile
 
@@ -258,13 +278,13 @@ deploy:
 
 # Server access
 ssh:
-    ssh root@$(cd infra && tofu output -raw server_ip)
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip)
 
 server-logs:
-    ssh root@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose logs -f app'
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose logs -f app'
 
 server-status:
-    ssh root@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose ps'
+    ssh ubuntu@$(cd infra && tofu output -raw server_ip) 'cd /opt/workshop && docker compose ps'
 ```
 
 ## README.md (верхнього рівня)
@@ -296,7 +316,7 @@ server-status:
 4. Merge в main — deploy.yml проходить успішно, smoke-test зелений.
 5. `curl http://<server-ip>/health/ready` повертає 200 з production server-а.
 6. `just lint` — без помилок і без diff від format.
-7. `tofu destroy` — все знесено, нічого не лишилось висіти на Hetzner.
+7. `Actions → Infra → Run workflow → destroy` — все знесено, нічого не лишилось висіти на AWS (state bucket лишається свідомо, прибирається вручну `aws s3 rb` якщо треба).
 8. JSON logs видно через `just logs` з усіма потрібними полями (`request_id`, `method`, `path`, `status`, `duration_ms`).
 9. `X-Request-ID` header присутній в response.
 
@@ -307,7 +327,7 @@ server-status:
 3. Запропонуй план: список файлів які створиш, в якому порядку. Я підтверджу.
 4. Імплементуй поетапно: спочатку local dev (compose + app + tests), потім CI, потім Terraform + deploy.
 5. Після кожного етапу — короткий статус, що зроблено, що далі.
-6. Не запускай `tofu apply` сам — це я роблю руками.
+6. Не запускай `tofu apply` сам — інфра деплоїться **тільки через `Actions → Infra → Run workflow`**, кнопку тисну я. Локально `tofu apply` не передбачено як основний шлях.
 7. CI workflow тестуй створенням draft PR, не push-ом одразу в main.
 
 ## Технічні преференції

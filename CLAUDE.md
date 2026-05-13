@@ -4,7 +4,7 @@ Baseline API for an AI workshop on diagnosing performance problems with Claude C
 
 ## Stack (fixed by spec)
 
-Python 3.12, FastAPI, SQLAlchemy 2.0 async + asyncpg, PostgreSQL 16, Alembic, structlog, pydantic-settings. Dependency management via `uv` (NOT poetry). Docker + docker-compose for local and prod. GitHub Actions for CI/CD, ghcr.io for images, OpenTofu/Terraform on Hetzner for infra. `justfile` for command shortcuts.
+Python 3.12, FastAPI, SQLAlchemy 2.0 async + asyncpg, PostgreSQL 16, Alembic, structlog, pydantic-settings. Dependency management via `uv` (NOT poetry). Docker + docker-compose for local and prod. GitHub Actions for CI/CD, ghcr.io for images, OpenTofu/Terraform on AWS EC2 (`eu-central-1`) for infra; tfstate in S3 with `use_lockfile = true`. Infra is provisioned via `Actions → Infra → Run workflow` (no local `tofu apply`). `justfile` for command shortcuts.
 
 ## Coding rules
 
