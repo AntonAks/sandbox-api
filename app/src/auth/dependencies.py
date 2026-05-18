@@ -20,12 +20,12 @@ async def get_current_user(credentials: BearerDep, session: SessionDep) -> User:
     token = credentials.credentials
     try:
         payload = decode_jwt(token)
-    except JWTError:
+    except JWTError as exc:
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(

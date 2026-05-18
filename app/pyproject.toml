@@ -35,6 +35,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Depends() in arg defaults is idiomatic — silence B008 for it
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
