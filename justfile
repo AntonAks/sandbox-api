@@ -37,6 +37,21 @@ lint:
 format:
     docker compose exec app ruff format .
 
+# Seed
+seed-csv:
+    docker compose exec app python -m src.scripts.seed_csv
+
+seed-csv-reset:
+    docker compose exec app python -m src.scripts.seed_csv --reset
+
+# Perf
+perf-trip-search:
+    uv run --project app python -m perf.stress_trip_search --env local
+
+perf-trip-search-aws:
+    @ip=$$(cd infra && tofu output -raw server_ip); \
+        STRESS_TARGET_URL=http://$$ip uv run --project app python -m perf.stress_trip_search --env aws
+
 # Deploy
 deploy:
     git push origin main

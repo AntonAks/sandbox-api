@@ -5,10 +5,15 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from src.auth.router import router as auth_router
 from src.db import wait_for_db
+from src.drivers.router import router as drivers_router
+from src.health.router import router as health_router
+from src.loads.router import router as loads_router
 from src.logging import configure_logging
 from src.middleware import RequestIDMiddleware
-from src.routes import health
+from src.reports.router import router as reports_router
+from src.trips.router import router as trips_router
 
 
 @asynccontextmanager
@@ -20,7 +25,12 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(RequestIDMiddleware)
-app.include_router(health.router)
+app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(drivers_router)
+app.include_router(trips_router)
+app.include_router(loads_router)
+app.include_router(reports_router)
 
 logger = structlog.get_logger()
 
