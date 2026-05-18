@@ -31,6 +31,7 @@ COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app src/ ./src/
 COPY --chown=app:app alembic/ ./alembic/
 COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app data/ ./data/
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app \
