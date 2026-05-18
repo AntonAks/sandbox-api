@@ -42,3 +42,15 @@ variable "app_env" {
   default     = "prod"
   description = "Value of ENV variable for the app (.env on server)."
 }
+
+variable "jwt_secret_key" {
+  type        = string
+  sensitive   = true
+  description = "Secret used to sign JWT access tokens. Generate with `openssl rand -base64 48`."
+}
+
+variable "access_token_expire_minutes" {
+  type        = number
+  default     = 1440
+  description = "JWT access token lifetime in minutes (default 24h)."
+}

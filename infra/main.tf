@@ -99,13 +99,15 @@ resource "aws_instance" "app" {
   }
 
   user_data = templatefile("${path.module}/cloud-init.yaml", {
-    github_repository    = local.github_repository_lower
-    github_owner         = local.github_owner
-    ghcr_token           = var.ghcr_token
-    postgres_password    = var.postgres_password
-    app_env              = var.app_env
-    compose_prod_content = local.compose_prod_content
-    nginx_content        = local.nginx_content
+    github_repository           = local.github_repository_lower
+    github_owner                = local.github_owner
+    ghcr_token                  = var.ghcr_token
+    postgres_password           = var.postgres_password
+    app_env                     = var.app_env
+    jwt_secret_key              = var.jwt_secret_key
+    access_token_expire_minutes = var.access_token_expire_minutes
+    compose_prod_content        = local.compose_prod_content
+    nginx_content               = local.nginx_content
   })
 
   tags = {
