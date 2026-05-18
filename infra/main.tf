@@ -92,6 +92,11 @@ resource "aws_instance" "app" {
   subnet_id                   = tolist(data.aws_subnets.default.ids)[0]
   associate_public_ip_address = true
 
+  # Cloud-init runs only at first boot. Without this, changes to user_data are
+  # applied "in place" (silent metadata update) but the running instance keeps
+  # the original .env / packages / etc. Force replacement so cloud-init re-runs.
+  user_data_replace_on_change = true
+
   root_block_device {
     volume_size           = 20
     volume_type           = "gp3"
