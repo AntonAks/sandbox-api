@@ -76,13 +76,38 @@ async def sample_trip_id(db_session):
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def sample_truck_metric(db_session):
-    """Ensure at least one row exists for truck_id=1, month=2024-06."""
+    """Ensure at least one row exists for truck_id=1, month=2024-06.
+
+    Self-contained: inserts the parent Truck if absent so the fixture works in CI
+    where CSV seed has not run.
+    """
     from datetime import date
     from decimal import Decimal
 
     from sqlalchemy import select
 
-    from src.models import TruckUtilizationMetrics
+    from src.models import Truck, TruckUtilizationMetrics
+
+    truck = (
+        await db_session.execute(select(Truck).where(Truck.truck_id == 1))
+    ).scalar_one_or_none()
+    if truck is None:
+        db_session.add(
+            Truck(
+                truck_id=1,
+                unit_number="T1-TEST",
+                make="Freightliner",
+                model_year=2021,
+                vin="VINTEST00000001",
+                acquisition_date=date(2021, 1, 1),
+                acquisition_mileage=0,
+                fuel_type="Diesel",
+                tank_capacity_gallons=200,
+                status="ACTIVE",
+                home_terminal="Atlanta",
+            )
+        )
+        await db_session.commit()
 
     existing = (
         await db_session.execute(
