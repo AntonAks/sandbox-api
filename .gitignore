@@ -31,6 +31,9 @@ Thumbs.db
 # App venv (uv creates one per package)
 app/.venv/
 
+# Local docker-compose overrides (port conflicts, dev quirks)
+docker-compose.override.yml
+
 # Terraform
 infra/terraform.tfvars
 infra/.terraform/

@@ -8,6 +8,10 @@
 
 > **Примітка:** інфра спочатку планувалась на Hetzner Cloud, але через тривалий outage Hetzner Accounts ми перейшли на AWS. Якщо колись повертаємось на Hetzner — це окремий PR, поки документація і код описують AWS.
 
+> **Phase 2 status (2026-05-17):** baseline (this spec) is shipped. Active work is on
+> phase 2 (dispatcher console) — see `docs/superpowers/specs/2026-05-17-phase2-workshop-content-design.md`
+> for the full design.
+
 ## Структура repo
 
 Monorepo:

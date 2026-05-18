@@ -30,6 +30,8 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/sandbox_api
       LOG_LEVEL: WARNING
+      JWT_SECRET_KEY: ci-test-secret-not-for-real-use
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +47,9 @@ jobs:
 
       - name: Ruff format check
         run: uv run ruff format --check .
+
+      - name: Apply migrations
+        run: uv run alembic upgrade head
 
       - name: Pytest
         run: uv run pytest -v
