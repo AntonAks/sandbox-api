@@ -84,8 +84,23 @@ def _transform_row(row: dict[str, str], id_cols: set[str]) -> list[str]:
     return result
 
 
-def _build_dsn() -> str:
-    return settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
+def _connect_kwargs() -> dict[str, object]:
+    """Parse the SQLAlchemy DATABASE_URL into asyncpg kwargs.
+
+    Avoids DSN string parsing — base64-generated passwords routinely contain
+    `/` or `+` which break asyncpg's URL parser (it mistakes parts of the
+    password for host/port). Pass components separately instead.
+    """
+    from sqlalchemy.engine.url import make_url
+
+    url = make_url(settings.DATABASE_URL)
+    return {
+        "host": url.host,
+        "port": url.port,
+        "user": url.username,
+        "password": url.password,
+        "database": url.database,
+    }
 
 
 async def _table_has_data(conn: asyncpg.Connection, table: str) -> bool:
@@ -124,7 +139,7 @@ async def _copy_csv(conn: asyncpg.Connection, table: str) -> int:
 
 
 async def _seed(reset: bool) -> None:
-    conn = await asyncpg.connect(_build_dsn())
+    conn = await asyncpg.connect(**_connect_kwargs())
     try:
         if not reset and await _table_has_data(conn, "trips"):
             typer.echo("data already seeded — exiting (use --reset to force)")
