@@ -11,11 +11,6 @@ write_files:
     content: |
       ${indent(6, compose_prod_content)}
 
-  - path: /opt/workshop/nginx.conf
-    permissions: '0644'
-    content: |
-      ${indent(6, nginx_content)}
-
   - path: /opt/workshop/.env
     permissions: '0640'
     content: |
