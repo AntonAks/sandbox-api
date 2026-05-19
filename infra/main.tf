@@ -46,7 +46,8 @@ locals {
   github_owner            = split("/", var.github_repository)[0]
   github_repository_lower = lower(var.github_repository)
   compose_prod_content    = file("${path.module}/../deploy/docker-compose.prod.yml")
-  nginx_content           = file("${path.module}/../deploy/nginx.conf")
+  # nginx.conf is no longer needed at cloud-init time — it's baked into the
+  # custom nginx image (deploy/nginx.Dockerfile) and pulled from ghcr by deploy.yml.
 }
 
 resource "aws_key_pair" "admin" {
@@ -114,7 +115,6 @@ resource "aws_instance" "app" {
     demo_user_email             = var.demo_user_email
     demo_user_password          = var.demo_user_password
     compose_prod_content        = local.compose_prod_content
-    nginx_content               = local.nginx_content
   })
 
   tags = {
