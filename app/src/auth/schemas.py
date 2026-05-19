@@ -1,8 +1,11 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Accept any string identifier — DB does the actual lookup.
+    # EmailStr here would reject reserved TLDs (.local, .test, .invalid) that
+    # are perfectly fine for internal/demo workshops.
+    email: str
     password: str
 
 
