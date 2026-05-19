@@ -21,7 +21,7 @@ write_files:
     content: |
       ENV=${app_env}
       LOG_LEVEL=INFO
-      UVICORN_WORKERS=2
+      UVICORN_WORKERS=4
       GITHUB_REPOSITORY=${github_repository}
       POSTGRES_USER=postgres
       POSTGRES_PASSWORD=${postgres_password}
@@ -29,6 +29,8 @@ write_files:
       DATABASE_URL=postgresql+asyncpg://postgres:${postgres_password}@db:5432/sandbox_api
       JWT_SECRET_KEY=${jwt_secret_key}
       ACCESS_TOKEN_EXPIRE_MINUTES=${access_token_expire_minutes}
+      DEMO_USER_EMAIL=${demo_user_email}
+      DEMO_USER_PASSWORD=${demo_user_password}
 
 runcmd:
   - systemctl enable --now docker

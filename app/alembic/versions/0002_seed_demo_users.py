@@ -1,14 +1,25 @@
-"""seed demo users
+"""seed demo users — now a no-op
 
 Revision ID: 0002
 Revises: 0001
 Create Date: 2026-05-17
 
+Originally this migration inserted hard-coded demo users (dispatcher@example.com,
+viewer@example.com) with bcrypt-hashed passwords baked into source. That made
+password rotation impossible without a new migration and leaked the password
+into git history.
+
+Demo-user seeding now lives at runtime in ``src.auth.seed.ensure_demo_user``
+which reads ``DEMO_USER_EMAIL`` and ``DEMO_USER_PASSWORD`` from environment
+on every startup (idempotent upsert).
+
+The legacy hard-coded users are removed here so old environments converge to
+the new env-driven seed without leftover rows. The upgrade is safe to apply on
+fresh DBs (DELETE matches nothing) and on existing prod DBs (legacy rows go
+away, lifespan recreates the env-driven one on next boot).
 """
 
 from collections.abc import Sequence
-
-import sqlalchemy as sa
 
 from alembic import op
 
@@ -18,33 +29,10 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-DISPATCHER_HASH = "$2b$12$oI9Wp5OazEuLEWIrdb2TuOITAaOxXT9ABhNG81gsLhmPvqB/Rce.u"
-VIEWER_HASH = "$2b$12$g1qE2WjT4V.Wwsl9L0H7G.xzpqip3HFxyAPvW9o5l.GX/4d2nu7XW"
-
-
 def upgrade() -> None:
-    users = sa.table(
-        "users",
-        sa.column("email", sa.String),
-        sa.column("password_hash", sa.String),
-        sa.column("display_name", sa.String),
-    )
-    op.bulk_insert(
-        users,
-        [
-            {
-                "email": "dispatcher@example.com",
-                "password_hash": DISPATCHER_HASH,
-                "display_name": "Demo Dispatcher",
-            },
-            {
-                "email": "viewer@example.com",
-                "password_hash": VIEWER_HASH,
-                "display_name": "Demo Viewer",
-            },
-        ],
-    )
+    op.execute("DELETE FROM users WHERE email IN ('dispatcher@example.com', 'viewer@example.com')")
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM users WHERE email IN ('dispatcher@example.com', 'viewer@example.com')")
+    # No-op — we don't re-insert hardcoded creds on downgrade.
+    pass

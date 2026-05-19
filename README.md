@@ -9,18 +9,25 @@ the phase 2 (this) design.
 
 ```bash
 cp .env.example .env
-# (edit JWT_SECRET_KEY at minimum)
+# Required env vars to set in .env:
+#   JWT_SECRET_KEY        — openssl rand -base64 48
+#   DEMO_USER_EMAIL       — any valid email
+#   DEMO_USER_PASSWORD    — openssl rand -base64 24
 just up
 docker compose exec app alembic upgrade head
 just seed-csv
 ```
 
-Login:
+Login (replace placeholders with values you put in `.env`):
 ```bash
 curl -s -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"dispatcher@example.com","password":"dispatcher123"}'
+  -d '{"email":"<DEMO_USER_EMAIL>","password":"<DEMO_USER_PASSWORD>"}'
 ```
+
+The demo user is upserted on app startup from `DEMO_USER_EMAIL` and
+`DEMO_USER_PASSWORD` env vars (see `app/src/auth/seed.py`). Rotating the
+password is a redeploy, not a migration.
 
 ## Endpoints
 

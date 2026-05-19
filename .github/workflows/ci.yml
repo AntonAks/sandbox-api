@@ -52,6 +52,8 @@ jobs:
       LOG_LEVEL: WARNING
       JWT_SECRET_KEY: ci-test-secret-not-for-real-use
       ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      DEMO_USER_EMAIL: ci-dispatcher@example.com
+      DEMO_USER_PASSWORD: ci-test-dispatcher-pass
     steps:
       - uses: actions/checkout@v4
 

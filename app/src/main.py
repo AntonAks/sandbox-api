@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 
 from src.admin.router import router as admin_router
 from src.auth.router import router as auth_router
-from src.db import wait_for_db
+from src.auth.seed import ensure_demo_user
+from src.db import SessionLocal, wait_for_db
 from src.drivers.router import router as drivers_router
 from src.health.router import router as health_router
 from src.loads.router import router as loads_router
@@ -21,6 +22,8 @@ from src.trips.router import router as trips_router
 async def lifespan(_app: FastAPI):
     configure_logging()
     await wait_for_db()
+    async with SessionLocal() as session:
+        await ensure_demo_user(session)
     yield
 
 

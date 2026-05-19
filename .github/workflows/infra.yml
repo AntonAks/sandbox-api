@@ -30,6 +30,8 @@ jobs:
       TF_VAR_ghcr_token:        ${{ secrets.TF_VAR_GHCR_TOKEN }}
       TF_VAR_postgres_password: ${{ secrets.TF_VAR_POSTGRES_PASSWORD }}
       TF_VAR_jwt_secret_key:    ${{ secrets.TF_VAR_JWT_SECRET_KEY }}
+      TF_VAR_demo_user_email:   ${{ secrets.TF_VAR_DEMO_USER_EMAIL }}
+      TF_VAR_demo_user_password: ${{ secrets.TF_VAR_DEMO_USER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
