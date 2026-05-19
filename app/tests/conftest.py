@@ -2,9 +2,10 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@db:5432/sandbox_api")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
-os.environ.setdefault(
-    "JWT_SECRET_KEY", "test-secret-key-not-for-production"
-)  # required at import time by Settings()
+# required at import time by Settings():
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("DEMO_USER_EMAIL", "dispatcher@example.com")
+os.environ.setdefault("DEMO_USER_PASSWORD", "dispatcher123")
 
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
@@ -30,15 +31,20 @@ async def demo_users():
     engine = create_async_engine(settings.DATABASE_URL)
     Session = async_sessionmaker(engine, expire_on_commit=False)
     async with Session() as session:
-        result = await session.execute(select(User).where(User.email == "dispatcher@example.com"))
-        if result.scalar_one_or_none() is None:
-            dispatcher = User(
-                email="dispatcher@example.com",
-                password_hash=hash_password("dispatcher123"),
-                display_name="Demo Dispatcher",
+        result = await session.execute(select(User).where(User.email == settings.DEMO_USER_EMAIL))
+        existing = result.scalar_one_or_none()
+        hashed = hash_password(settings.DEMO_USER_PASSWORD)
+        if existing is None:
+            session.add(
+                User(
+                    email=settings.DEMO_USER_EMAIL,
+                    password_hash=hashed,
+                    display_name="Demo Dispatcher",
+                )
             )
-            session.add(dispatcher)
-            await session.commit()
+        else:
+            existing.password_hash = hashed
+        await session.commit()
     await engine.dispose()
 
 
@@ -56,7 +62,7 @@ async def authed_client(client, demo_users):
     """HTTP client with Authorization header pre-set for the demo dispatcher."""
     login = await client.post(
         "/auth/login",
-        json={"email": "dispatcher@example.com", "password": "dispatcher123"},
+        json={"email": settings.DEMO_USER_EMAIL, "password": settings.DEMO_USER_PASSWORD},
     )
     client.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
     return client

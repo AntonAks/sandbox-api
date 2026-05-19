@@ -54,3 +54,15 @@ variable "access_token_expire_minutes" {
   default     = 1440
   description = "JWT access token lifetime in minutes (default 24h)."
 }
+
+variable "demo_user_email" {
+  type        = string
+  sensitive   = true
+  description = "Email for the demo dispatcher user (seeded on app startup via env)."
+}
+
+variable "demo_user_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for the demo dispatcher user. Generate with `openssl rand -base64 24`."
+}

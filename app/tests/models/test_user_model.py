@@ -3,6 +3,8 @@ import os
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@db:5432/sandbox_api")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("DEMO_USER_EMAIL", "dispatcher@example.com")
+os.environ.setdefault("DEMO_USER_PASSWORD", "dispatcher123")
 
 from src.models.users import User  # noqa: E402
 

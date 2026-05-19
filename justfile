@@ -48,9 +48,9 @@ seed-csv-reset:
 perf-trip-search:
     uv run --project app python -m perf.stress_trip_search --env local
 
-perf-trip-search-aws:
-    @ip=$$(cd infra && tofu output -raw server_ip); \
-        STRESS_TARGET_URL=http://$$ip uv run --project app python -m perf.stress_trip_search --env aws
+perf-trip-search-aws ip body="heavy" max-parallel="34":
+    STRESS_TARGET_URL=http://{{ip}} uv run --project app python -m perf.stress_trip_search \
+        --env aws --body {{body}} --max-parallel {{max-parallel}}
 
 # Deploy
 deploy:

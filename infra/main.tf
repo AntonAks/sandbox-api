@@ -111,6 +111,8 @@ resource "aws_instance" "app" {
     app_env                     = var.app_env
     jwt_secret_key              = var.jwt_secret_key
     access_token_expire_minutes = var.access_token_expire_minutes
+    demo_user_email             = var.demo_user_email
+    demo_user_password          = var.demo_user_password
     compose_prod_content        = local.compose_prod_content
     nginx_content               = local.nginx_content
   })
