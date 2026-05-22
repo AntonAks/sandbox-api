@@ -35,16 +35,11 @@ async def build_driver_dashboard(
     *,
     since: date | None = None,
 ) -> dict:
-    """Builds dashboard payload.
-
-    NOTE: This is the 'naive first implementation'. Performance issues live here.
-    """
     driver = await get_driver_or_404(session, driver_id)
 
     if since is None:
         since = date.today() - timedelta(days=30)
 
-    # Recent trips
     trips_stmt = (
         select(Trip)
         .where((Trip.driver_id == driver_id) & (Trip.dispatch_date >= since))
@@ -55,12 +50,10 @@ async def build_driver_dashboard(
 
     recent_payload = []
     for t in recent_trips:
-        # N+1 on load / customer / route per trip
         load = await session.get(Load, t.load_id)
         customer = await session.get(Customer, load.customer_id)
         route = await session.get(Route, load.route_id)
 
-        # N+1 on events for on_time compute per trip
         events = list(
             (await session.execute(select(DeliveryEvent).where(DeliveryEvent.trip_id == t.trip_id)))
             .scalars()
@@ -82,7 +75,6 @@ async def build_driver_dashboard(
             }
         )
 
-    # Current month metrics — inline from raw, ignoring driver_monthly_metrics
     today = date.today()
     month_start = today.replace(day=1)
     month_trips_stmt = select(Trip).where(

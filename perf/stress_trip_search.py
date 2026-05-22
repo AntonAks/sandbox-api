@@ -16,6 +16,7 @@ import aiohttp
 
 from perf.bodies.trip_search_heavy import TRIP_SEARCH_HEAVY
 from perf.bodies.trip_search_light import TRIP_SEARCH_LIGHT
+from perf.settings import settings
 
 BODIES = {"heavy": TRIP_SEARCH_HEAVY, "light": TRIP_SEARCH_LIGHT}
 
@@ -24,19 +25,14 @@ ENV_CONFIG = {
     "aws": {"url": os.environ.get("STRESS_TARGET_URL", ""), "latency_offset": 0.05},
 }
 
-DEMO_EMAIL = os.environ.get("DEMO_USER_EMAIL")
-DEMO_PASSWORD = os.environ.get("DEMO_USER_PASSWORD")
-if not DEMO_EMAIL or not DEMO_PASSWORD:
-    raise SystemExit(
-        "DEMO_USER_EMAIL and DEMO_USER_PASSWORD env vars are required "
-        "(same values used by the deployed app — check GitHub secrets)."
-    )
-
 
 async def login(session: aiohttp.ClientSession, base_url: str) -> str:
     async with session.post(
         f"{base_url}/auth/login",
-        json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
+        json={
+            "email": settings.DEMO_USER_EMAIL,
+            "password": settings.DEMO_USER_PASSWORD,
+        },
     ) as resp:
         resp.raise_for_status()
         return (await resp.json())["access_token"]
@@ -136,11 +132,11 @@ def main() -> None:
     asyncio.run(stress(url, headers, body, [], [], 5, 10))
     time.sleep(0.5)
 
-    loops = [(1, 10), (1, 15), (1, 30), (1, 60), (1, 120)]
+    # loops = [(1, 10), (1, 15), (1, 30), (1, 60), (1, 120)]
     # loops = [(2, 10), (2, 15), (2, 30), (2, 60), (2, 120)]
 
     header = "total/parallel   errors    " + "".join(
-        f"{k:>7}" for k in ("time", "avg", "p95", "min", "max")
+        f"{k:>7}" for k in ("time", "avg", "p50", "p95", "min", "max")
     )
     print(header)
 
@@ -165,6 +161,7 @@ def main() -> None:
         results = {
             "time": elapsed,
             "avg": statistics.mean(latencies),
+            "p50": statistics.median(latencies),
             "p95": (
                 statistics.quantiles(latencies, n=20)[18]
                 if ok >= 20
@@ -173,7 +170,7 @@ def main() -> None:
             "min": min(latencies),
             "max": max(latencies),
         }
-        for k in ("avg", "p95", "min", "max"):
+        for k in ("avg", "p50", "p95", "min", "max"):
             results[k] = max(0.0, results[k] - network_offset)
         row = f"{total}/{parallel:<13} {err_summary:>7}    " + "".join(
             f"{v:>6.2f}s" for v in results.values()

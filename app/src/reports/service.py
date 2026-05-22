@@ -8,12 +8,6 @@ from src.models import Truck, TruckUtilizationMetrics
 
 
 async def fleet_utilization(session: AsyncSession, *, month: str) -> dict:
-    """Look up monthly truck utilization from pre-aggregated table.
-
-    Note: this table is populated by an out-of-band refresh job (not implemented).
-    If current month is requested, data may be stale or empty — return what's there
-    honestly via data_computed_at.
-    """
     month_date = date.fromisoformat(f"{month}-01")
 
     stmt = (
@@ -37,8 +31,6 @@ async def fleet_utilization(session: AsyncSession, *, month: str) -> dict:
         for m, unit_number in rows
     ]
 
-    # data_computed_at: last day of the month at 23:55 — honest representation
-    # that this is a snapshot, not live data
     last_day = monthrange(month_date.year, month_date.month)[1]
     computed_at = datetime(month_date.year, month_date.month, last_day, 23, 55, tzinfo=UTC)
 
