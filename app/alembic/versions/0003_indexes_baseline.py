@@ -17,9 +17,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Extras beyond the FK/status indexes already created in 0001.
-    # Intentionally excludes composite (driver_id, dispatch_date) on trips —
-    # that index is Bug A's fix and lives in a future workshop migration.
     op.create_index(
         "ix_maintenance_records_maintenance_date", "maintenance_records", ["maintenance_date"]
     )
