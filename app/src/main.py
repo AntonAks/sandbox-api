@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 import structlog
@@ -8,6 +9,9 @@ from fastapi.responses import JSONResponse
 from src.admin.router import router as admin_router
 from src.auth.router import router as auth_router
 from src.auth.seed import ensure_demo_user
+from src.config import settings
+from src.dashboard.middleware import RequestCounterMiddleware
+from src.dashboard.router import router as dashboard_router
 from src.db import SessionLocal, wait_for_db
 from src.drivers.router import router as drivers_router
 from src.health.router import router as health_router
@@ -21,6 +25,7 @@ from src.trips.router import router as trips_router
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     configure_logging()
+    os.makedirs(settings.STATS_DIR, exist_ok=True)
     await wait_for_db()
     async with SessionLocal() as session:
         await ensure_demo_user(session)
@@ -28,7 +33,9 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(RequestCounterMiddleware)
 app.add_middleware(RequestIDMiddleware)
+app.include_router(dashboard_router)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(drivers_router)
