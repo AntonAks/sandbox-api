@@ -41,3 +41,6 @@ infra/.terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
 *.tfplan
+
+
+local_test.py
