@@ -76,7 +76,6 @@ async def search_trips(
     limit: int = 20,
     offset: int = 0,
 ) -> dict:
-    """Search trips with filters. Naive implementation — Bug A lives here."""
     stmt = select(Trip)
     if driver_ids:
         stmt = stmt.where(Trip.driver_id.in_(driver_ids))
@@ -89,13 +88,11 @@ async def search_trips(
 
     trips = list((await session.execute(stmt)).scalars().all())
 
-    # Python-side filter for distance
     if min_distance is not None:
         trips = [t for t in trips if t.actual_distance_miles >= min_distance]
     if max_distance is not None:
         trips = [t for t in trips if t.actual_distance_miles <= max_distance]
 
-    # destination_state / load_status via per-trip db.get
     if destination_state or load_status:
         filtered = []
         for t in trips:
@@ -111,7 +108,6 @@ async def search_trips(
     total = len(trips)
     page = trips[offset : offset + limit]
 
-    # Result enrichment — N+1 (driver, truck, load, route per item)
     items = []
     for t in page:
         load = await session.get(Load, t.load_id)
