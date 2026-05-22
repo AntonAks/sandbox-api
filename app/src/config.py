@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h
     DEMO_USER_EMAIL: str
     DEMO_USER_PASSWORD: str
+    STATS_DIR: str = "/tmp/dashboard_stats"
 
 
 settings = Settings()
