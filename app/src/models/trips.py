@@ -44,4 +44,6 @@ class Trip(Base):
     __table_args__ = (
         UniqueConstraint("load_id", name="uq_trips_load_id"),
         Index("ix_trips_trip_status", "trip_status"),
+        Index("ix_trips_dispatch_date", "dispatch_date"),
+        Index("ix_trips_driver_id_dispatch_date", "driver_id", "dispatch_date"),
     )
