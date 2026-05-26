@@ -7,10 +7,12 @@ from sqlalchemy.orm import selectinload
 
 from src.models import (
     DeliveryEvent,
+    Driver,
     FuelPurchase,
     Load,
     Route,
     Trip,
+    Truck,
 )
 
 
@@ -75,14 +77,6 @@ async def search_trips(
     offset: int = 0,
 ) -> dict:
     stmt = select(Trip)
-
-    if load_status is not None or destination_state is not None:
-        stmt = stmt.join(Trip.load)
-        if load_status is not None:
-            stmt = stmt.where(Load.load_status == load_status)
-        if destination_state is not None:
-            stmt = stmt.join(Load.route).where(Route.destination_state == destination_state)
-
     if driver_ids:
         stmt = stmt.where(Trip.driver_id.in_(driver_ids))
     if truck_ids:
@@ -91,41 +85,48 @@ async def search_trips(
         stmt = stmt.where(Trip.dispatch_date >= date_from)
     if date_to is not None:
         stmt = stmt.where(Trip.dispatch_date <= date_to)
+
+    trips = list((await session.execute(stmt)).scalars().all())
+
     if min_distance is not None:
-        stmt = stmt.where(Trip.actual_distance_miles >= min_distance)
+        trips = [t for t in trips if t.actual_distance_miles >= min_distance]
     if max_distance is not None:
-        stmt = stmt.where(Trip.actual_distance_miles <= max_distance)
+        trips = [t for t in trips if t.actual_distance_miles <= max_distance]
 
-    total = int(
-        (await session.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
-    )
+    if destination_state or load_status:
+        filtered = []
+        for t in trips:
+            load = await session.get(Load, t.load_id)
+            route = await session.get(Route, load.route_id)
+            if destination_state and route.destination_state != destination_state:
+                continue
+            if load_status and load.load_status != load_status:
+                continue
+            filtered.append(t)
+        trips = filtered
 
-    page_stmt = (
-        stmt.options(
-            selectinload(Trip.load).selectinload(Load.route),
-            selectinload(Trip.driver),
-            selectinload(Trip.truck),
+    total = len(trips)
+    page = trips[offset : offset + limit]
+
+    items = []
+    for t in page:
+        load = await session.get(Load, t.load_id)
+        route = await session.get(Route, load.route_id)
+        driver = await session.get(Driver, t.driver_id) if t.driver_id else None
+        truck = await session.get(Truck, t.truck_id) if t.truck_id else None
+        items.append(
+            {
+                "trip_id": t.trip_id,
+                "dispatch_date": t.dispatch_date,
+                "driver_name": f"{driver.first_name} {driver.last_name}" if driver else "—",
+                "truck_unit": truck.unit_number if truck else "—",
+                "route_summary": (
+                    f"{route.origin_city}, {route.origin_state} → "
+                    f"{route.destination_city}, {route.destination_state}"
+                ),
+                "distance_miles": t.actual_distance_miles,
+                "trip_status": t.trip_status,
+            }
         )
-        .order_by(Trip.trip_id)
-        .limit(limit)
-        .offset(offset)
-    )
-    trips = list((await session.execute(page_stmt)).scalars().all())
-
-    items = [
-        {
-            "trip_id": t.trip_id,
-            "dispatch_date": t.dispatch_date,
-            "driver_name": f"{t.driver.first_name} {t.driver.last_name}" if t.driver else "—",
-            "truck_unit": t.truck.unit_number if t.truck else "—",
-            "route_summary": (
-                f"{t.load.route.origin_city}, {t.load.route.origin_state} → "
-                f"{t.load.route.destination_city}, {t.load.route.destination_state}"
-            ),
-            "distance_miles": t.actual_distance_miles,
-            "trip_status": t.trip_status,
-        }
-        for t in trips
-    ]
 
     return {"total": total, "items": items}
