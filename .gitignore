@@ -27,6 +27,7 @@ Thumbs.db
 
 # Claude Code (personal, not committed)
 .claude/settings.local.json
+.claude/hooks-logs/
 
 # App venv (uv creates one per package)
 app/.venv/
@@ -42,5 +43,7 @@ infra/.terraform.lock.hcl
 *.tfstate.backup
 *.tfplan
 
+# docs
+docs/
 
 local_test.py
