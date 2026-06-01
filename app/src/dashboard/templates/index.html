@@ -18,12 +18,23 @@
   .status-4 { color: #bf3a18; }
   .status-5 { color: #b00; }
   #empty { color: #888; font-style: italic; }
+  h2 { font-size: 16px; margin: 28px 0 12px; }
+  td.seed-status { text-align: left; font-weight: 600; }
+  .seed-ok { color: #1a7f37; }
+  .seed-mismatch { color: #b00; }
+  .seed-unknown { color: #888; }
+  #seed-overall { margin-bottom: 12px; font-weight: 600; }
+  button { font: inherit; padding: 4px 12px; cursor: pointer; }
 </style>
 </head>
 <body>
 <h1>sandbox-api — requests since start</h1>
 <div id="meta">polling /dashboard/stats every 1.5s</div>
 <div id="table-root"></div>
+
+<h2>Seed data check <button id="seed-refresh" type="button">Refresh</button></h2>
+<div id="seed-overall"></div>
+<div id="seed-root"></div>
 
 <script>
 const POLL_MS = 1500;
@@ -85,8 +96,41 @@ async function tick() {
   } catch (e) { /* swallow */ }
 }
 
+function fmt(n) {
+  return n === null ? "—" : Number(n).toLocaleString();
+}
+
+function renderSeed(report) {
+  const overall = document.getElementById("seed-overall");
+  overall.className = "seed-" + report.overall_status;
+  overall.textContent =
+    `overall: ${report.overall_status} — ${fmt(report.total_rows)} / ${fmt(report.total_expected)} rows`;
+
+  let html = "<table><thead><tr>"
+    + "<th class='route'>table</th><th>rows</th><th>expected</th><th class='route'>status</th>"
+    + "</tr></thead><tbody>";
+  for (const t of report.tables) {
+    html += `<tr><td class='route'>${escapeHtml(t.table)}</td>`
+      + `<td>${fmt(t.rows)}</td><td>${fmt(t.expected)}</td>`
+      + `<td class='seed-status seed-${t.status}'>${escapeHtml(t.status)}</td></tr>`;
+  }
+  html += "</tbody></table>";
+  document.getElementById("seed-root").innerHTML = html;
+}
+
+async function seedTick() {
+  try {
+    const r = await fetch("/dashboard/seed-check", { cache: "no-store" });
+    if (!r.ok) return;
+    renderSeed(await r.json());
+  } catch (e) { /* swallow */ }
+}
+
+document.getElementById("seed-refresh").addEventListener("click", seedTick);
+
 tick();
 setInterval(tick, POLL_MS);
+seedTick();
 </script>
 </body>
 </html>

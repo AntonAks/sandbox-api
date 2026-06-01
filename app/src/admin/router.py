@@ -13,43 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
 from src.db import get_session
-from src.models import (
-    Customer,
-    DeliveryEvent,
-    Driver,
-    DriverMonthlyMetrics,
-    Facility,
-    FuelPurchase,
-    Load,
-    MaintenanceRecord,
-    Route,
-    SafetyIncident,
-    Trailer,
-    Trip,
-    Truck,
-    TruckUtilizationMetrics,
-)
+from src.domain_tables import DOMAIN_TABLES
 from src.scripts.seed_csv import _seed
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-_DOMAIN_MODELS = {
-    "drivers": Driver,
-    "trucks": Truck,
-    "trailers": Trailer,
-    "customers": Customer,
-    "facilities": Facility,
-    "routes": Route,
-    "loads": Load,
-    "trips": Trip,
-    "fuel_purchases": FuelPurchase,
-    "maintenance_records": MaintenanceRecord,
-    "delivery_events": DeliveryEvent,
-    "safety_incidents": SafetyIncident,
-    "driver_monthly_metrics": DriverMonthlyMetrics,
-    "truck_utilization_metrics": TruckUtilizationMetrics,
-}
 
 
 @router.post("/seed-csv", status_code=202)
@@ -81,7 +48,7 @@ async def seed_status(
 ) -> dict:
     """Row counts per domain table. Useful for watching seed progress."""
     counts: dict[str, int] = {}
-    for name, model in _DOMAIN_MODELS.items():
+    for name, model in DOMAIN_TABLES.items():
         result = await session.execute(select(func.count()).select_from(model))
         counts[name] = result.scalar_one()
     counts["total"] = sum(counts.values())
