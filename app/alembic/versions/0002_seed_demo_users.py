@@ -34,5 +34,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # No-op — we don't re-insert hardcoded creds on downgrade.
     pass

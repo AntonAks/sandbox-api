@@ -30,6 +30,5 @@ async def ensure_demo_user(session: AsyncSession) -> None:
             )
         )
     else:
-        # Always sync the hash so password rotation in env takes effect.
         user.password_hash = hashed
     await session.commit()

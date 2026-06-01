@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     UVICORN_WORKERS: int = 2
     JWT_SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     DEMO_USER_EMAIL: str
     DEMO_USER_PASSWORD: str
     STATS_DIR: str = "/tmp/dashboard_stats"
