@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     DEMO_USER_EMAIL: str
     DEMO_USER_PASSWORD: str
     STATS_DIR: str = "/tmp/dashboard_stats"
+    SEED_MANIFEST_PATH: str = "/tmp/seed_expected_counts.json"
 
 
 settings = Settings()

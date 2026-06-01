@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import json
 import re
 from pathlib import Path
 
@@ -17,6 +18,7 @@ import asyncpg
 import typer
 
 from src.config import settings
+from src.domain_tables import DOMAIN_TABLES
 
 app = typer.Typer(add_completion=False)
 
@@ -134,7 +136,26 @@ async def _copy_csv(conn: asyncpg.Connection, table: str) -> int:
     return int(result.split()[-1])
 
 
+def _count_csv_data_rows(table: str) -> int:
+    csv_path = DATA_DIR / f"{table}.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"missing CSV: {csv_path}")
+    with csv_path.open(newline="") as f:
+        reader = csv.reader(f)
+        next(reader, None)
+        return sum(1 for _ in reader)
+
+
+def _write_expected_manifest() -> None:
+    counts = {table: _count_csv_data_rows(table) for table in DOMAIN_TABLES}
+    path = Path(settings.SEED_MANIFEST_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(counts))
+    typer.echo(f"wrote expected-counts manifest → {path}")
+
+
 async def _seed(reset: bool) -> None:
+    _write_expected_manifest()
     conn = await asyncpg.connect(**_connect_kwargs())
     try:
         if not reset and await _table_has_data(conn, "trips"):
