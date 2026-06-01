@@ -18,7 +18,6 @@ async def test_trip_detail_returns_full_shape(authed_client, sample_trip_id):
         "fuel_summary",
         "delivery_events_count",
     }
-    # load.customer should be nested
     assert body["load"]["customer"]["customer_id"] > 0
 
 

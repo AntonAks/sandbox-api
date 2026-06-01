@@ -20,7 +20,6 @@ from src.config import settings
 
 app = typer.Typer(add_completion=False)
 
-# Load order — FK parents before children
 LOAD_ORDER = [
     "drivers",
     "trucks",
@@ -38,10 +37,8 @@ LOAD_ORDER = [
     "truck_utilization_metrics",
 ]
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"  # /app/data inside container
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-# Columns whose values are business-key strings (e.g. "DRV00001") that must be
-# converted to their integer suffix before inserting into the DB.
 _ID_COLUMNS: dict[str, set[str]] = {
     "drivers": {"driver_id"},
     "trucks": {"truck_id"},
@@ -108,7 +105,6 @@ async def _table_has_data(conn: asyncpg.Connection, table: str) -> bool:
 
 
 async def _truncate_all(conn: asyncpg.Connection) -> None:
-    # Reverse order so FKs allow truncate; CASCADE handles edge cases
     for table in reversed(LOAD_ORDER):
         await conn.execute(f"TRUNCATE {table} RESTART IDENTITY CASCADE")
 

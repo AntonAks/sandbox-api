@@ -56,8 +56,8 @@ def main():
     }
 
     log_file = get_log_file_path()
-    with open(log_file, "a") as f:
-        f.write(json.dumps(event, default=str) + "\n")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(event, default=str, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":

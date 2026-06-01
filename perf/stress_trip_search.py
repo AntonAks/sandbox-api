@@ -132,9 +132,6 @@ def main() -> None:
     asyncio.run(stress(url, headers, body, [], [], 5, 10))
     time.sleep(0.5)
 
-    # loops = [(1, 10), (1, 15), (1, 30), (1, 60), (1, 120)]
-    # loops = [(2, 10), (2, 15), (2, 30), (2, 60), (2, 120)]
-
     header = "total/parallel   errors    " + "".join(
         f"{k:>7}" for k in ("time", "avg", "p50", "p95", "min", "max")
     )
