@@ -55,29 +55,29 @@ function render(counts) {
   for (const r of routes) for (const s of Object.keys(counts[r])) statusSet.add(s);
   const statuses = [...statusSet].sort();
 
-  const colTotals = Object.fromEntries(routes.map(r => [r, 0]));
-  const rowTotals = Object.fromEntries(statuses.map(s => [s, 0]));
+  const colTotals = Object.fromEntries(statuses.map(s => [s, 0]));
+  const rowTotals = Object.fromEntries(routes.map(r => [r, 0]));
   let grand = 0;
   for (const r of routes) for (const s of statuses) {
     const v = counts[r][s] || 0;
-    colTotals[r] += v;
-    rowTotals[s] += v;
+    colTotals[s] += v;
+    rowTotals[r] += v;
     grand += v;
   }
 
-  let html = "<table><thead><tr><th class='route'>status \\ route</th>";
-  for (const r of routes) html += `<th>${escapeHtml(r)}</th>`;
+  let html = "<table><thead><tr><th class='route'>route \\ status</th>";
+  for (const s of statuses) html += `<th class='${statusClass(s)}'>${escapeHtml(s)}</th>`;
   html += "<th class='total'>total</th></tr></thead><tbody>";
-  for (const s of statuses) {
-    html += `<tr><td class='status ${statusClass(s)}'>${escapeHtml(s)}</td>`;
-    for (const r of routes) {
+  for (const r of routes) {
+    html += `<tr><td class='route'>${escapeHtml(r)}</td>`;
+    for (const s of statuses) {
       const v = counts[r][s] || 0;
       html += `<td class='${statusClass(s)}'>${v || ""}</td>`;
     }
-    html += `<td class='total'>${rowTotals[s]}</td></tr>`;
+    html += `<td class='total'>${rowTotals[r]}</td></tr>`;
   }
   html += "<tr class='total'><td class='route'>total</td>";
-  for (const r of routes) html += `<td>${colTotals[r]}</td>`;
+  for (const s of statuses) html += `<td>${colTotals[s]}</td>`;
   html += `<td>${grand}</td></tr></tbody></table>`;
   root.innerHTML = html;
 }
