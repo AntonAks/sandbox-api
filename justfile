@@ -27,6 +27,12 @@ migrate-down:
 psql:
     docker compose exec db psql -U postgres
 
+# Auth
+# Print a JWT for the demo user via /auth/login (creds from .env).
+# Local default; pass an IP for a remote box, e.g. `just jwt 1.2.3.4`.
+jwt ip="localhost:8000":
+    uv run --project app python -m perf.issue_token --base-url http://{{ip}}
+
 # Testing & quality
 test:
     docker compose exec app pytest -v
