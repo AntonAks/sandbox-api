@@ -7,12 +7,10 @@ from sqlalchemy.orm import selectinload
 
 from src.models import (
     DeliveryEvent,
-    Driver,
     FuelPurchase,
     Load,
     Route,
     Trip,
-    Truck,
 )
 
 
@@ -76,7 +74,19 @@ async def search_trips(
     limit: int = 20,
     offset: int = 0,
 ) -> dict:
-    stmt = select(Trip)
+    # One statement: all filters in SQL (joining Load/Route for the relational ones),
+    # related rows eager-loaded, and pagination + count done by the DB. The driver_id +
+    # dispatch_date filter is backed by ix_trips_driver_id_dispatch_date (migration 0006).
+    stmt = (
+        select(Trip)
+        .join(Load, Trip.load_id == Load.load_id)
+        .join(Route, Load.route_id == Route.route_id)
+        .options(
+            selectinload(Trip.load).selectinload(Load.route),
+            selectinload(Trip.driver),
+            selectinload(Trip.truck),
+        )
+    )
     if driver_ids:
         stmt = stmt.where(Trip.driver_id.in_(driver_ids))
     if truck_ids:
@@ -85,41 +95,31 @@ async def search_trips(
         stmt = stmt.where(Trip.dispatch_date >= date_from)
     if date_to is not None:
         stmt = stmt.where(Trip.dispatch_date <= date_to)
-
-    trips = list((await session.execute(stmt)).scalars().all())
-
     if min_distance is not None:
-        trips = [t for t in trips if t.actual_distance_miles >= min_distance]
+        stmt = stmt.where(Trip.actual_distance_miles >= min_distance)
     if max_distance is not None:
-        trips = [t for t in trips if t.actual_distance_miles <= max_distance]
+        stmt = stmt.where(Trip.actual_distance_miles <= max_distance)
+    if destination_state:
+        stmt = stmt.where(Route.destination_state == destination_state)
+    if load_status:
+        stmt = stmt.where(Load.load_status == load_status)
 
-    if destination_state or load_status:
-        filtered = []
-        for t in trips:
-            load = await session.get(Load, t.load_id)
-            route = await session.get(Route, load.route_id)
-            if destination_state and route.destination_state != destination_state:
-                continue
-            if load_status and load.load_status != load_status:
-                continue
-            filtered.append(t)
-        trips = filtered
-
-    total = len(trips)
-    page = trips[offset : offset + limit]
+    total = await session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery()))
+    rows = (
+        (await session.execute(stmt.order_by(Trip.trip_id).limit(limit).offset(offset)))
+        .scalars()
+        .all()
+    )
 
     items = []
-    for t in page:
-        load = await session.get(Load, t.load_id)
-        route = await session.get(Route, load.route_id)
-        driver = await session.get(Driver, t.driver_id) if t.driver_id else None
-        truck = await session.get(Truck, t.truck_id) if t.truck_id else None
+    for t in rows:
+        route = t.load.route
         items.append(
             {
                 "trip_id": t.trip_id,
                 "dispatch_date": t.dispatch_date,
-                "driver_name": f"{driver.first_name} {driver.last_name}" if driver else "—",
-                "truck_unit": truck.unit_number if truck else "—",
+                "driver_name": (f"{t.driver.first_name} {t.driver.last_name}" if t.driver else "—"),
+                "truck_unit": t.truck.unit_number if t.truck else "—",
                 "route_summary": (
                     f"{route.origin_city}, {route.origin_state} → "
                     f"{route.destination_city}, {route.destination_state}"
@@ -129,4 +129,4 @@ async def search_trips(
             }
         )
 
-    return {"total": total, "items": items}
+    return {"total": total or 0, "items": items}

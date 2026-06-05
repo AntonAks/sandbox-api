@@ -20,39 +20,16 @@
   },
   "hooks": {
     "SessionStart": [
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
-      }
     ],
     "SessionEnd": [
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
-      }
     ],
     "UserPromptSubmit": [
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
-      }
     ],
     "Stop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
-      }
+
     ],
     "Notification": [
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
-      }
+
     ],
     "PostToolUse": [
       {
@@ -65,11 +42,6 @@
             "statusMessage": "ruff format/check"
           }
         ]
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
-        ]
       }
     ],
     "PreToolUse": [
@@ -78,11 +50,6 @@
         "hooks": [
           { "type": "command", "command": "python3 .claude/scripts/block-git-mutations.py" },
           { "type": "command", "command": "python3 .claude/scripts/block-dangerous-commands.py" }
-        ]
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "python3 .claude/scripts/event-logger.py" }
         ]
       }
     ]
