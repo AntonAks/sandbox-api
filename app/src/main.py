@@ -15,6 +15,7 @@ from src.dashboard.router import router as dashboard_router
 from src.db import SessionLocal, wait_for_db
 from src.drivers.router import router as drivers_router
 from src.health.router import router as health_router
+from src.incidents.router import router as incidents_router
 from src.loads.router import router as loads_router
 from src.logging import configure_logging
 from src.middleware import RequestIDMiddleware
@@ -41,6 +42,7 @@ app.include_router(auth_router)
 app.include_router(drivers_router)
 app.include_router(trips_router)
 app.include_router(loads_router)
+app.include_router(incidents_router)
 app.include_router(reports_router)
 app.include_router(admin_router)
 
